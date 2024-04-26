@@ -64,8 +64,6 @@ def load_data(test_size, batch_train, batch_test):
     train_set = datasets.OxfordIIITPet(root="Dataset", download=False, transform=transform, split="trainval", target_transform=binary_transform)
     test_set = datasets.OxfordIIITPet(root="Dataset", download=False, transform=transform, split="test", target_transform=binary_transform)
     dataset = ConcatDataset([train_set, test_set])
-#    cat_set = get_cats(dataset)
-#    dataset = ConcatDataset([dataset, cat_set])
     shuffled = list(range(len(dataset)))
     random.shuffle(shuffled)
     train_set = Subset(dataset, shuffled[test_size:])
@@ -73,17 +71,6 @@ def load_data(test_size, batch_train, batch_test):
     trainloader = DataLoader(train_set, batch_size=batch_train, shuffle=True)
     testloader = DataLoader(test_set, batch_size=batch_test, shuffle=False)
     return trainloader, testloader
-
-
-def get_cats(dataset):
-    idxs = []
-    for i, data in enumerate(dataset):
-        image, label = data
-        if label == 0:
-            idxs.append(i)
-    print(len(idxs))
-    return Subset(dataset, idxs)
-
 
 
 train_loader, test_loader = load_data(1500, 100, 1500)
@@ -105,9 +92,9 @@ class DCResNet18(nn.Module):
 
 # path = "/content/drive/MyDrive/DeepLearning/"
 path = "./"
-filename = "accuracy_long.csv"
-#with open(path + filename, "w") as file:
-#    file.write("weight, accuracy, loss, epochs, amount training data, cat accuracy, dog accuracy\n")
+filename = "accuracy_bin_long.csv"
+with open(path + filename, "w") as file:
+    file.write("weight, accuracy, loss, epochs, cat accuracy, dog accuracy\n")
 
 
 def accuracy(dataloader):
@@ -154,27 +141,22 @@ def train_model(model, dataloader, epochs=5, lr=0.001, weight=0.001):
             loss.backward()
             optimizer.step()
         print('[%2d] loss: %.3f' % (epoch + 1, loss.item()))
-    return model, loss.item()
+    return loss.item()
 
 
-train_amount = 0
-for loader in train_loader:
-    train_amount += len(loader)
-
-
-for weight in [0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.01, 0.02, 0.1, 0.2]:
+for weight in [0.5]:
     print("Weight: %.2f" % weight)
-    epochs = 7
+    epochs = 15
     model = DCResNet18()
-    model, loss = train_model(model, train_loader, weight=weight, epochs=epochs)
+    loss = train_model(model, train_loader, weight=weight, epochs=epochs)
+    torch.save(model.state_dict(), path + "model_w=%.5f.pt" % weight)
     print("accuracy training: " + str(100 * accuracy(train_loader)[0]) + "%")
     acc, accs = accuracy(test_loader)
     print("accuracy test: " + str(acc))
     
-    result = "%.5f,%.3f,%.5f,%d, %d" % (weight, 100 * acc, loss, epochs, train_amount)
+    result = "%.5f,%.3f,%.5f,%d" % (weight, 100 * acc, loss, epochs)
     for acc in accs:
         acc = 100 * acc
         result += ", %.2f" % acc
     with open(path + filename, "a") as file:
         file.write(result + "\n")
-    torch.save(model.state_dict(), path + "model_w=%.5f.pt" % weight)
