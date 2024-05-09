@@ -73,7 +73,7 @@ def train_model(model, train_set, criterion, optimizer, lr_scheduler_fc=None, lr
     for epoch in range(num_epochs):
         running_loss = 0.0
         if epoch == 2:
-            model = unfreeze(model)
+            unfreeze(model)
 
         for i, data in enumerate(train_set, 0):
             images, labels = data[0].to(device), data[1].to(device)
