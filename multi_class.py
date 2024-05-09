@@ -18,15 +18,18 @@ print(torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 params = {
+    "augmentation": True,
     "batch_train": 200,
     "batch_test": 500,
     "test_size": 500,
+
     "lr": 0.001,
     "lr_backbone": 0.0001,
     "weight_decay": 0.001,
     "lr_decay": 0.5,
     "epochs": 2,
     "lr_step": 1,
+
     "tune_layers": ["fc"]
 }
 

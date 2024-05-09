@@ -26,6 +26,7 @@ def get_loaders(params):
     test_size = params["test_size"]
     batch_train = params["batch_train"]
     batch_test = params["batch_test"]
+    augmentation = params["augmentation"]
 
     transformRotations = transforms.Compose([
         transforms.Resize((460, 460)),
@@ -47,7 +48,10 @@ def get_loaders(params):
                              std=[0.229, 0.224, 0.225]),
     ])
 
-    train_set = datasets.OxfordIIITPet(root="Dataset", download=True, transform=transformRotations, split="trainval")
+    if augmentation:
+        train_set = datasets.OxfordIIITPet(root="Dataset", download=True, transform=transformRotations, split="trainval")
+    else:
+        train_set = datasets.OxfordIIITPet(root="Dataset", download=True, transform=transform, split="trainval")
     test_set = datasets.OxfordIIITPet(root="Dataset", download=True, transform=transform, split="test")
 
     dataset = ConcatDataset([train_set, test_set])
