@@ -18,42 +18,59 @@ print(torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 params = {
+    "model_name": "resnet18",
+    "binary_classification": True,
+    "adamW": False,
+
     "augmentation": True,
-    "batch_train": 200,
+    "batch_train": 300,
     "batch_test": 500,
-    "test_size": 500,
+    "test_size": 1000,
 
-    "lr": 0.001,
+    "lr": 0.003,
     "lr_backbone": 0.0001,
-    "weight_decay": 0.001,
+    "weight_decay": 0.01,
     "lr_decay": 0.5,
-    "epochs": 2,
-    "lr_step": 1,
+    "epochs": 3,
+    "lr_step": 2,
 
-    "tune_layers": ["fc"]
+    "tune_layers": ["fc"],
+    "unfreeze_layers": ["layer4"],
+    "freeze_epoch": 2
 }
-
 
 train_loader, test_loader = get_loaders(params)
 
-model = get_model()
+model = get_model(params["model_name"])
+
+# show_grad_stat(model)
 
 freeze(model, params["tune_layers"])
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(
-    [
-        {"params": model.fc.parameters(), "lr": params["lr"], "weight_decay": params["weight_decay"]},
-        {"params": [param for name, param in model.named_parameters() if 'fc' not in name], "lr": params["lr_backbone"],
-         "weight_decay": params["weight_decay"]},
-    ]
-)
+if params["adamW"]:
+    optimizer = torch.optim.AdamW(
+        [
+            {"params": model.fc.parameters(), "lr": params["lr"], "weight_decay": params["weight_decay"]},
+            {"params": [param for name, param in model.named_parameters() if 'fc' not in name],
+             "lr": params["lr_backbone"],
+             "weight_decay": params["weight_decay"]},
+        ]
+    )
 
-scheduekr_backbone = StepLR(optimizer, step_size=params["lr_step"], gamma=params["lr_decay"])
-scheduler_fc = StepLR(optimizer, step_size=params["lr_step"], gamma=params["lr_decay"])
+else:
+    optimizer = torch.optim.Adam(
+        [
+            {"params": model.fc.parameters(), "lr": params["lr"], "weight_decay": params["weight_decay"]},
+            {"params": [param for name, param in model.named_parameters() if 'fc' not in name],
+             "lr": params["lr_backbone"],
+             "weight_decay": params["weight_decay"]},
+        ]
+    )
 
-train_model(model, train_loader, criterion, optimizer, scheduler_fc, scheduekr_backbone, params["epochs"])
+scheduler = StepLR(optimizer, step_size=params["lr_step"], gamma=params["lr_decay"])
+
+train_model(model, train_loader, criterion, optimizer, scheduler, params)
 acc = evaluate_model(model, test_loader)
 
 save_params(params, acc)
-
